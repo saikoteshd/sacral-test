@@ -1,54 +1,282 @@
 import java.util.Scanner;
+import java.util.HashMap;
+import java.util.Map;
 
+/**
+ * Represents a bank account with a name and balance.
+ */
+class Account {
+    private String name;
+    private double balance;
+
+    /**
+     * Constructs an Account with the given name and initial deposit.
+     * @param name the account holder's name
+     * @param initialDeposit the initial deposit amount (must be non-negative)
+     */
+    public Account(String name, double initialDeposit) {
+        this.name = name;
+        this.balance = initialDeposit;
+    }
+
+    /**
+     * Gets the account holder's name.
+     * @return the name
+     */
+    public String getName() {
+        return name;
+    }
+
+    /**
+     * Gets the current balance of the account.
+     * @return the balance
+     */
+    public double getBalance() {
+        return balance;
+    }
+
+    /**
+     * Deposits a positive amount into the account.
+     * @param amount the amount to deposit (must be positive)
+     * @throws IllegalArgumentException if amount is not positive
+     */
+    public void deposit(double amount) {
+        if (amount <= 0) throw new IllegalArgumentException("Deposit must be positive.");
+        balance += amount;
+    }
+
+    /**
+     * Withdraws a positive amount from the account if sufficient funds exist.
+     * @param amount the amount to withdraw (must be positive and <= balance)
+     * @throws IllegalArgumentException if amount is not positive or insufficient funds
+     */
+    public void withdraw(double amount) {
+        if (amount <= 0) throw new IllegalArgumentException("Withdrawal must be positive.");
+        if (amount > balance) throw new IllegalArgumentException("Insufficient funds.");
+        balance -= amount;
+    }
+}
+
+/**
+ * Provides banking services such as account creation, deposit, withdrawal, and deletion.
+ */
+class BankService {
+    private Map<String, Account> accounts = new HashMap<>();
+
+    /**
+     * Creates a new account with the given name and initial deposit.
+     * @param name the account holder's name
+     * @param initialDeposit the initial deposit amount (must be non-negative)
+     * @throws IllegalArgumentException if account exists or deposit is negative
+     */
+    public void createAccount(String name, double initialDeposit) {
+        if (accounts.containsKey(name)) throw new IllegalArgumentException("Account already exists.");
+        if (initialDeposit < 0) throw new IllegalArgumentException("Initial deposit must be non-negative.");
+        accounts.put(name, new Account(name, initialDeposit));
+        System.out.println("Account created for " + name + ".");
+    }
+
+    /**
+     * Deposits an amount to the specified account.
+     * @param name the account holder's name
+     * @param amount the amount to deposit (must be positive)
+     * @throws IllegalArgumentException if account not found or amount invalid
+     */
+    public void depositTo(String name, double amount) {
+        Account acc = accounts.get(name);
+        if (acc == null) throw new IllegalArgumentException("Account not found.");
+        acc.deposit(amount);
+        System.out.println("Deposited " + amount + " to " + name + ".");
+    }
+
+    /**
+     * Withdraws an amount from the specified account.
+     * @param name the account holder's name
+     * @param amount the amount to withdraw (must be positive and <= balance)
+     * @throws IllegalArgumentException if account not found or amount invalid
+     */
+    public void withdrawFrom(String name, double amount) {
+        Account acc = accounts.get(name);
+        if (acc == null) throw new IllegalArgumentException("Account not found.");
+        acc.withdraw(amount);
+        System.out.println("Withdrew " + amount + " from " + name + ".");
+    }
+
+    /**
+     * Prints all accounts and their balances to the console.
+     */
+    public void printAllAccounts() {
+        if (accounts.isEmpty()) {
+            System.out.println("No accounts found.");
+            return;
+        }
+        System.out.println("Accounts:");
+        for (Account acc : accounts.values()) {
+            System.out.printf("Name: %s, Balance: %.2f%n", acc.getName(), acc.getBalance());
+        }
+    }
+
+    /**
+     * Deletes the specified account.
+     * @param name the account holder's name
+     * @throws IllegalArgumentException if account not found
+     */
+    public void deleteAccount(String name) {
+        if (!accounts.containsKey(name)) throw new IllegalArgumentException("Account not found.");
+        accounts.remove(name);
+        System.out.println("Account " + name + " deleted.");
+    }
+
+    /**
+     * Checks if an account exists for the given name.
+     * @param name the account holder's name
+     * @return true if account exists, false otherwise
+     */
+    public boolean accountExists(String name) {
+        return accounts.containsKey(name);
+    }
+
+    /**
+     * Gets the account for the given name.
+     * @param name the account holder's name
+     * @return the Account object, or null if not found
+     */
+    public Account getAccount(String name) {
+        return accounts.get(name);
+    }
+}
+
+/**
+ * Main class for the Mini Bank application.
+ * <p>
+ * Supports multi-user sessions with admin and customer roles. Admins can create/delete accounts and view all accounts. Customers can deposit, withdraw, and view their own account. Console-based UI.
+ */
 public class Main {
+    /**
+     * Entry point for the Mini Bank application. Handles user login, session management, and menu navigation.
+     * @param args command-line arguments (not used)
+     */
     public static void main(String[] args) {
         BankService bank = new BankService();
         Scanner scanner = new Scanner(System.in);
         String option;
+        boolean isAdmin = false;
+        String currentUser = null;
 
         System.out.println("=== Mini Bank ===");
 
-        do {
-            System.out.println("\n1. Create Account");
-            System.out.println("2. Deposit");
-            System.out.println("3. Withdraw");
-            System.out.println("4. Show Accounts");
-            System.out.println("5. Exit");
+        // Main login loop: allows user to log in as admin, customer, or exit
+        while (true) {
+            System.out.println("\nLogin as:");
+            System.out.println("1. Admin");
+            System.out.println("2. Customer");
+            System.out.println("3. Exit");
             System.out.print("Option: ");
             option = scanner.nextLine();
 
-            try {
-                switch (option) {
-                    case "1" -> {
-                        System.out.print("Name: ");
-                        String name = scanner.nextLine();
-                        System.out.print("Initial deposit: ");
-                        double deposit = Double.parseDouble(scanner.nextLine());
-                        bank.createAccount(name, deposit);
-                    }
-                    case "2" -> {
-                        System.out.print("Name: ");
-                        String name = scanner.nextLine();
-                        System.out.print("Deposit amount: ");
-                        double amount = Double.parseDouble(scanner.nextLine());
-                        bank.depositTo(name, amount);
-                    }
-                    case "3" -> {
-                        System.out.print("Name: ");
-                        String name = scanner.nextLine();
-                        System.out.print("Withdrawal amount: ");
-                        double amount = Double.parseDouble(scanner.nextLine());
-                        bank.withdrawFrom(name, amount);
-                    }
-                    case "4" -> bank.printAllAccounts();
-                    case "5" -> System.out.println("Goodbye.");
-                    default -> System.out.println("Invalid option.");
+            if (option.equals("1")) {
+                // Admin login (no password for simplicity)
+                isAdmin = true;
+                currentUser = null;
+                System.out.println("Logged in as Admin.");
+            } else if (option.equals("2")) {
+                // Customer login
+                System.out.print("Enter your name: ");
+                String name = scanner.nextLine();
+                if (!bank.accountExists(name)) {
+                    System.out.println("Account not found. Please ask admin to create your account.");
+                    continue;
                 }
-            } catch (Exception e) {
-                System.out.println("Error: " + e.getMessage());
+                isAdmin = false;
+                currentUser = name;
+                System.out.println("Logged in as Customer: " + name);
+            } else if (option.equals("3")) {
+                System.out.println("Goodbye.");
+                break;
+            } else {
+                System.out.println("Invalid option.");
+                continue;
             }
-        } while (!option.equals("5"));
 
+            // Session loop: presents menu based on user role (admin/customer)
+            boolean sessionActive = true;
+            while (sessionActive) {
+                if (isAdmin) {
+                    System.out.println("\n--- Admin Menu ---");
+                    System.out.println("1. Create Account");
+                    System.out.println("2. Delete Account");
+                    System.out.println("3. Show Accounts");
+                    System.out.println("4. Logout");
+                    System.out.print("Option: ");
+                    option = scanner.nextLine();
+
+                    try {
+                        switch (option) {
+                            case "1" -> {
+                                System.out.print("Name: ");
+                                String name = scanner.nextLine();
+                                System.out.print("Initial deposit: ");
+                                double deposit = Double.parseDouble(scanner.nextLine());
+                                bank.createAccount(name, deposit);
+                            }
+                            case "2" -> {
+                                System.out.print("Name: ");
+                                String name = scanner.nextLine();
+                                bank.deleteAccount(name);
+                            }
+                            case "3" -> bank.printAllAccounts();
+                            case "4" -> {
+                                sessionActive = false;
+                                System.out.println("Logged out.");
+                            }
+                            default -> System.out.println("Invalid option.");
+                        }
+                    } catch (Exception e) {
+                        System.out.println("Error: " + e.getMessage());
+                    }
+                } else {
+                    System.out.println("\n--- Customer Menu ---");
+                    System.out.println("1. Deposit");
+                    System.out.println("2. Withdraw");
+                    System.out.println("3. Show My Account");
+                    System.out.println("4. Logout");
+                    System.out.print("Option: ");
+                    option = scanner.nextLine();
+
+                    try {
+                        switch (option) {
+                            case "1" -> {
+                                System.out.print("Deposit amount: ");
+                                double amount = Double.parseDouble(scanner.nextLine());
+                                bank.depositTo(currentUser, amount);
+                            }
+                            case "2" -> {
+                                System.out.print("Withdrawal amount: ");
+                                double amount = Double.parseDouble(scanner.nextLine());
+                                bank.withdrawFrom(currentUser, amount);
+                            }
+                            case "3" -> {
+                                // Print only the current user's account
+                                Account acc = bank.getAccount(currentUser);
+                                if (acc != null) {
+                                    System.out.println("Account:");
+                                    System.out.printf("Name: %s, Balance: %.2f%n", acc.getName(), acc.getBalance());
+                                } else {
+                                    System.out.println("Account not found.");
+                                }
+                            }
+                            case "4" -> {
+                                sessionActive = false;
+                                System.out.println("Logged out.");
+                            }
+                            default -> System.out.println("Invalid option.");
+                        }
+                    } catch (Exception e) {
+                        System.out.println("Error: " + e.getMessage());
+                    }
+                }
+            }
+        }
         scanner.close();
     }
 }
