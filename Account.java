@@ -1,3 +1,6 @@
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 /**
  * The Account class represents a simple bank account with basic operations such as deposit and withdrawal.
  * It stores the account holder's name and the current balance.
@@ -15,6 +18,9 @@ public class Account {
     /** The current balance of the account. */
     private double balance;
 
+    /** Logger for the Account class. */
+    private static final Logger logger = Logger.getLogger(Account.class.getName());
+
     /**
      * Constructs a new Account with the specified holder name and initial deposit.
      *
@@ -24,6 +30,7 @@ public class Account {
     public Account(String holderName, double initialDeposit) {
         this.holderName = holderName;
         this.balance = initialDeposit;
+        logger.info("Created account for holder: " + holderName + " with initial deposit: $" + initialDeposit);
     }
 
     /**
@@ -54,7 +61,9 @@ public class Account {
         // Validate that the deposit amount is positive
         if (amount > 0) {
             balance += amount;
+            logger.info("Deposited $" + amount + " to account " + holderName + ". New balance: $" + balance);
         } else {
+            logger.warning("Failed deposit attempt of $" + amount + " to account " + holderName + ". Reason: amount not positive.");
             throw new IllegalArgumentException("Deposit amount must be positive.");
         }
     }
@@ -67,10 +76,17 @@ public class Account {
      */
     public void withdraw(double amount) {
         // Validate that the withdrawal amount is positive
-        if (amount <= 0) throw new IllegalArgumentException("Withdrawal must be positive.");
+        if (amount <= 0) {
+            logger.warning("Failed withdrawal attempt of $" + amount + " from account " + holderName + ". Reason: amount not positive.");
+            throw new IllegalArgumentException("Withdrawal must be positive.");
+        }
         // Validate that the withdrawal amount does not exceed the current balance
-        if (amount > balance) throw new IllegalArgumentException("Insufficient balance.");
+        if (amount > balance) {
+            logger.warning("Failed withdrawal attempt of $" + amount + " from account " + holderName + ". Reason: insufficient balance.");
+            throw new IllegalArgumentException("Insufficient balance.");
+        }
         balance -= amount;
+        logger.info("Withdrew $" + amount + " from account " + holderName + ". New balance: $" + balance);
     }
 
     /**
