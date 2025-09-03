@@ -1,29 +1,23 @@
 import java.util.Scanner;
 import java.util.HashMap;
 import java.util.Map;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.io.Console;
-import java.util.logging.Logger;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
- * Represents a bank account with a name, password hash, and balance.
+ * Represents a bank account with a name and balance.
  */
 class Account {
     private String name;
-    private String passwordHash;
     private double balance;
 
     /**
-     * Constructs an Account with the given name, password hash, and initial deposit.
+     * Constructs an Account with the given name and initial deposit.
      * @param name the account holder's name
-     * @param passwordHash the SHA-256 hash of the password
      * @param initialDeposit the initial deposit amount (must be non-negative)
      */
-    public Account(String name, String passwordHash, double initialDeposit) {
+    public Account(String name, double initialDeposit) {
         this.name = name;
-        this.passwordHash = passwordHash;
         this.balance = initialDeposit;
     }
 
@@ -41,15 +35,6 @@ class Account {
      */
     public double getBalance() {
         return balance;
-    }
-
-    /**
-     * Validates the password for this account.
-     * @param password the password to check
-     * @return true if the password is correct, false otherwise
-     */
-    public boolean validatePassword(String password) {
-        return passwordHash.equals(BankService.hashPassword(password));
     }
 
     /**
@@ -82,46 +67,16 @@ class BankService {
     private Map<String, Account> accounts = new HashMap<>();
 
     /**
-     * Hashes a password using SHA-256.
-     * @param password the password to hash
-     * @return the hex-encoded hash
-     */
-    public static String hashPassword(String password) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] hash = md.digest(password.getBytes());
-            StringBuilder sb = new StringBuilder();
-            for (byte b : hash) sb.append(String.format("%02x", b));
-            return sb.toString();
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("SHA-256 not available");
-        }
-    }
-
-    /**
-     * Creates a new account with the given name, password, and initial deposit.
+     * Creates a new account with the given name and initial deposit.
      * @param name the account holder's name
-     * @param password the account password
      * @param initialDeposit the initial deposit amount (must be non-negative)
      * @throws IllegalArgumentException if account exists or deposit is negative
      */
-    public void createAccount(String name, String password, double initialDeposit) {
-        if (accounts.containsKey(name)) {
-            logger.warning("Attempt to create duplicate account for: " + name);
-            throw new IllegalArgumentException("Account already exists.");
-        }
-        if (initialDeposit < 0) {
-            logger.warning("Attempt to create account with negative deposit for: " + name);
-            throw new IllegalArgumentException("Initial deposit must be non-negative.");
-        }
-        if (password == null || password.length() < 4) {
-            logger.warning("Attempt to create account with weak password for: " + name);
-            throw new IllegalArgumentException("Password must be at least 4 characters.");
-        }
-        String hash = hashPassword(password);
-        accounts.put(name, new Account(name, hash, initialDeposit));
-        logger.info("Account created for " + name);
-        System.out.println("Account created for " + name + ".");
+    public void createAccount(String name, double initialDeposit) {
+        if (accounts.containsKey(name)) throw new IllegalArgumentException("Account already exists.");
+        if (initialDeposit < 0) throw new IllegalArgumentException("Initial deposit must be non-negative.");
+        accounts.put(name, new Account(name, initialDeposit));
+        logger.log(Level.INFO, "Account created for {0} with initial deposit {1}", new Object[]{name, initialDeposit});
     }
 
     /**
@@ -132,13 +87,9 @@ class BankService {
      */
     public void depositTo(String name, double amount) {
         Account acc = accounts.get(name);
-        if (acc == null) {
-            logger.warning("Deposit attempt to non-existent account: " + name);
-            throw new IllegalArgumentException("Account not found.");
-        }
+        if (acc == null) throw new IllegalArgumentException("Account not found.");
         acc.deposit(amount);
-        logger.info("Deposited " + amount + " to " + name);
-        System.out.println("Deposited " + amount + " to " + name + ".");
+        logger.log(Level.INFO, "Deposited {0} to {1}", new Object[]{amount, name});
     }
 
     /**
@@ -149,13 +100,9 @@ class BankService {
      */
     public void withdrawFrom(String name, double amount) {
         Account acc = accounts.get(name);
-        if (acc == null) {
-            logger.warning("Withdrawal attempt from non-existent account: " + name);
-            throw new IllegalArgumentException("Account not found.");
-        }
+        if (acc == null) throw new IllegalArgumentException("Account not found.");
         acc.withdraw(amount);
-        logger.info("Withdrew " + amount + " from " + name);
-        System.out.println("Withdrew " + amount + " from " + name + ".");
+        logger.log(Level.INFO, "Withdrew {0} from {1}", new Object[]{amount, name});
     }
 
     /**
@@ -163,15 +110,15 @@ class BankService {
      */
     public void printAllAccounts() {
         if (accounts.isEmpty()) {
-            logger.info("No accounts found when printing all accounts.");
             System.out.println("No accounts found.");
+            logger.log(Level.INFO, "No accounts found when attempting to print all accounts.");
             return;
         }
-        logger.info("Printing all accounts.");
         System.out.println("Accounts:");
         for (Account acc : accounts.values()) {
             System.out.printf("Name: %s, Balance: %.2f%n", acc.getName(), acc.getBalance());
         }
+        logger.log(Level.INFO, "Printed all accounts. Count: {0}", accounts.size());
     }
 
     /**
@@ -180,13 +127,9 @@ class BankService {
      * @throws IllegalArgumentException if account not found
      */
     public void deleteAccount(String name) {
-        if (!accounts.containsKey(name)) {
-            logger.warning("Attempt to delete non-existent account: " + name);
-            throw new IllegalArgumentException("Account not found.");
-        }
+        if (!accounts.containsKey(name)) throw new IllegalArgumentException("Account not found.");
         accounts.remove(name);
-        logger.info("Account " + name + " deleted.");
-        System.out.println("Account " + name + " deleted.");
+        logger.log(Level.INFO, "Account {0} deleted.", name);
     }
 
     /**
@@ -206,18 +149,6 @@ class BankService {
     public Account getAccount(String name) {
         return accounts.get(name);
     }
-
-    /**
-     * Validates the password for the given account name.
-     * @param name the account holder's name
-     * @param password the password to check
-     * @return true if the password is correct, false otherwise
-     */
-    public boolean validateAccountPassword(String name, String password) {
-        Account acc = accounts.get(name);
-        if (acc == null) return false;
-        return acc.validatePassword(password);
-    }
 }
 
 /**
@@ -227,27 +158,6 @@ class BankService {
  */
 public class Main {
     private static final Logger logger = Logger.getLogger(Main.class.getName());
-    // For demo, admin password is hardcoded. In production, use secure storage.
-    private static final String ADMIN_PASSWORD_HASH = BankService.hashPassword("admin1234");
-
-    /**
-     * Reads a password from the console securely, or falls back to Scanner if Console is unavailable.
-     * @param scanner the Scanner to use as fallback
-     * @param prompt the prompt to display
-     * @return the password as a String
-     */
-    private static String readPassword(Scanner scanner, String prompt) {
-        Console console = System.console();
-        if (console != null) {
-            char[] pwd = console.readPassword(prompt);
-            return pwd == null ? "" : new String(pwd);
-        } else {
-            // Fallback for IDEs that don't support System.console()
-            System.out.print(prompt);
-            return scanner.nextLine();
-        }
-    }
-
     /**
      * Entry point for the Mini Bank application. Handles user login, session management, and menu navigation.
      * @param args command-line arguments (not used)
@@ -260,7 +170,6 @@ public class Main {
         String currentUser = null;
 
         System.out.println("=== Mini Bank ===");
-        logger.info("Mini Bank application started.");
 
         // Main login loop: allows user to log in as admin, customer, or exit
         while (true) {
@@ -272,42 +181,31 @@ public class Main {
             option = scanner.nextLine();
 
             if (option.equals("1")) {
-                // Admin login (with password)
-                String adminPwd = readPassword(scanner, "Enter admin password: ");
-                if (!BankService.hashPassword(adminPwd).equals(ADMIN_PASSWORD_HASH)) {
-                    logger.warning("Failed admin login attempt.");
-                    System.out.println("Invalid admin password.");
-                    continue;
-                }
+                // Admin login (no password for simplicity)
                 isAdmin = true;
                 currentUser = null;
-                logger.info("Admin logged in.");
                 System.out.println("Logged in as Admin.");
+                logger.log(Level.INFO, "Admin logged in.");
             } else if (option.equals("2")) {
                 // Customer login
                 System.out.print("Enter your name: ");
                 String name = scanner.nextLine();
                 if (!bank.accountExists(name)) {
-                    logger.warning("Login attempt for non-existent account: " + name);
                     System.out.println("Account not found. Please ask admin to create your account.");
-                    continue;
-                }
-                String pwd = readPassword(scanner, "Enter your password: ");
-                if (!bank.validateAccountPassword(name, pwd)) {
-                    logger.warning("Failed login attempt for user: " + name);
-                    System.out.println("Invalid password.");
+                    logger.log(Level.WARNING, "Customer login failed for name: {0}", name);
                     continue;
                 }
                 isAdmin = false;
                 currentUser = name;
-                logger.info("Customer logged in: " + name);
                 System.out.println("Logged in as Customer: " + name);
+                logger.log(Level.INFO, "Customer logged in: {0}", name);
             } else if (option.equals("3")) {
-                logger.info("Application exit requested.");
                 System.out.println("Goodbye.");
+                logger.log(Level.INFO, "Application exited by user.");
                 break;
             } else {
                 System.out.println("Invalid option.");
+                logger.log(Level.WARNING, "Invalid login option selected: {0}", option);
                 continue;
             }
 
@@ -328,10 +226,9 @@ public class Main {
                             case "1" -> {
                                 System.out.print("Name: ");
                                 String name = scanner.nextLine();
-                                String pwd = readPassword(scanner, "Set password for " + name + ": ");
                                 System.out.print("Initial deposit: ");
                                 double deposit = Double.parseDouble(scanner.nextLine());
-                                bank.createAccount(name, pwd, deposit);
+                                bank.createAccount(name, deposit);
                             }
                             case "2" -> {
                                 System.out.print("Name: ");
@@ -341,14 +238,17 @@ public class Main {
                             case "3" -> bank.printAllAccounts();
                             case "4" -> {
                                 sessionActive = false;
-                                logger.info("Admin logged out.");
                                 System.out.println("Logged out.");
+                                logger.log(Level.INFO, "Admin logged out.");
                             }
-                            default -> System.out.println("Invalid option.");
+                            default -> {
+                                System.out.println("Invalid option.");
+                                logger.log(Level.WARNING, "Invalid admin menu option: {0}", option);
+                            }
                         }
                     } catch (Exception e) {
-                        logger.log(Level.SEVERE, "Exception in admin session", e);
                         System.out.println("Error: " + e.getMessage());
+                        logger.log(Level.SEVERE, "Exception in admin menu: " + e.getMessage(), e);
                     }
                 } else {
                     System.out.println("\n--- Customer Menu ---");
@@ -377,26 +277,29 @@ public class Main {
                                 if (acc != null) {
                                     System.out.println("Account:");
                                     System.out.printf("Name: %s, Balance: %.2f%n", acc.getName(), acc.getBalance());
+                                    logger.log(Level.INFO, "Displayed account for user: {0}", currentUser);
                                 } else {
-                                    logger.warning("Customer tried to view non-existent account: " + currentUser);
                                     System.out.println("Account not found.");
+                                    logger.log(Level.WARNING, "Account not found for user: {0}", currentUser);
                                 }
                             }
                             case "4" -> {
                                 sessionActive = false;
-                                logger.info("Customer logged out: " + currentUser);
                                 System.out.println("Logged out.");
+                                logger.log(Level.INFO, "Customer logged out: {0}", currentUser);
                             }
-                            default -> System.out.println("Invalid option.");
+                            default -> {
+                                System.out.println("Invalid option.");
+                                logger.log(Level.WARNING, "Invalid customer menu option: {0}", option);
+                            }
                         }
                     } catch (Exception e) {
-                        logger.log(Level.SEVERE, "Exception in customer session for user: " + currentUser, e);
                         System.out.println("Error: " + e.getMessage());
+                        logger.log(Level.SEVERE, "Exception in customer menu for user: " + currentUser + ": " + e.getMessage(), e);
                     }
                 }
             }
         }
         scanner.close();
-        logger.info("Mini Bank application terminated.");
     }
 }
