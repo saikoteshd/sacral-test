@@ -1,36 +1,42 @@
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 
 /**
- * The Account class represents a simple bank account with basic operations such as deposit, withdrawal, and transfer.
+ * The Account class represents a simple bank account with basic operations such as deposit and withdrawal.
  * It stores the account holder's name and the current balance.
  *
  * Usage:
- *   Account account = new Account("John Doe", 100.0);
- *   account.deposit(50.0);
- *   account.withdraw(30.0);
- *   account.transferTo(anotherAccount, 20.0);
+ *   Account account = new Account("John Doe", 100.0, "mySecretPassword");
+ *   account.deposit(50.0, "mySecretPassword");
+ *   account.withdraw(30.0, "mySecretPassword");
  *
- * This class performs basic validation on deposit, withdrawal, and transfer operations.
+ * This class performs basic validation on deposit and withdrawal operations.
  */
 public class Account {
     /** The name of the account holder. */
     private String holderName;
     /** The current balance of the account. */
     private double balance;
+    /** The hashed password for account security. */
+    private byte[] passwordHash;
 
     /** Logger for the Account class. */
     private static final Logger logger = Logger.getLogger(Account.class.getName());
 
     /**
-     * Constructs a new Account with the specified holder name and initial deposit.
+     * Constructs a new Account with the specified holder name, initial deposit, and password.
      *
      * @param holderName the name of the account holder
      * @param initialDeposit the initial amount to deposit into the account
+     * @param password the password for the account
      */
-    public Account(String holderName, double initialDeposit) {
+    public Account(String holderName, double initialDeposit, String password) {
         this.holderName = holderName;
         this.balance = initialDeposit;
+        this.passwordHash = hashPassword(password);
         logger.info("Created account for holder: " + holderName + " with initial deposit: $" + initialDeposit);
     }
 
@@ -53,12 +59,28 @@ public class Account {
     }
 
     /**
-     * Deposits the specified amount into the account.
+     * Authenticates the user with the provided password.
+     *
+     * @param password the password to authenticate
+     * @return true if authentication is successful, false otherwise
+     */
+    public boolean authenticate(String password) {
+        return Arrays.equals(passwordHash, hashPassword(password));
+    }
+
+    /**
+     * Deposits the specified amount into the account after authentication.
      *
      * @param amount the amount to deposit (must be positive)
+     * @param password the password for authentication
      * @throws IllegalArgumentException if the deposit amount is not positive
+     * @throws SecurityException if authentication fails
      */
-    public void deposit(double amount) {
+    public void deposit(double amount, String password) {
+        if (!authenticate(password)) {
+            logger.warning("Failed deposit attempt to account " + holderName + ". Reason: authentication failed.");
+            throw new SecurityException("Authentication failed.");
+        }
         // Validate that the deposit amount is positive
         if (amount > 0) {
             balance += amount;
@@ -70,12 +92,18 @@ public class Account {
     }
 
     /**
-     * Withdraws the specified amount from the account.
+     * Withdraws the specified amount from the account after authentication.
      *
      * @param amount the amount to withdraw (must be positive and less than or equal to balance)
+     * @param password the password for authentication
      * @throws IllegalArgumentException if the withdrawal amount is not positive or exceeds the balance
+     * @throws SecurityException if authentication fails
      */
-    public void withdraw(double amount) {
+    public void withdraw(double amount, String password) {
+        if (!authenticate(password)) {
+            logger.warning("Failed withdrawal attempt from account " + holderName + ". Reason: authentication failed.");
+            throw new SecurityException("Authentication failed.");
+        }
         // Validate that the withdrawal amount is positive
         if (amount <= 0) {
             logger.warning("Failed withdrawal attempt of $" + amount + " from account " + holderName + ". Reason: amount not positive.");
@@ -100,59 +128,19 @@ public class Account {
         return "Account holder: " + holderName + ", Balance: $" + balance;
     }
 
-    // --- Additional Functionality ---
-
     /**
-     * Transfers the specified amount from this account to another account.
+     * Hashes the password using SHA-256.
      *
-     * @param target the target Account to transfer to
-     * @param amount the amount to transfer (must be positive and less than or equal to balance)
-     * @throws IllegalArgumentException if the amount is not positive or exceeds the balance
-     * @throws NullPointerException if the target account is null
+     * @param password the password to hash
+     * @return the hashed password as a byte array
      */
-    public void transferTo(Account target, double amount) {
-        // Validate that the target account is not null
-        if (target == null) {
-            logger.warning("Transfer failed: target account is null.");
-            throw new NullPointerException("Target account cannot be null.");
+    private byte[] hashPassword(String password) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return digest.digest(password.getBytes());
+        } catch (NoSuchAlgorithmException e) {
+            logger.log(Level.SEVERE, "SHA-256 algorithm not found for password hashing.", e);
+            throw new RuntimeException("SHA-256 algorithm not found.", e);
         }
-        // Validate that the transfer amount is positive
-        if (amount <= 0) {
-            logger.warning("Failed transfer attempt of $" + amount + " from account " + holderName + " to " + (target != null ? target.getHolderName() : "null") + ". Reason: amount not positive.");
-            throw new IllegalArgumentException("Transfer amount must be positive.");
-        }
-        // Validate that the transfer amount does not exceed the current balance
-        if (amount > balance) {
-            logger.warning("Failed transfer attempt of $" + amount + " from account " + holderName + " to " + target.getHolderName() + ". Reason: insufficient balance.");
-            throw new IllegalArgumentException("Insufficient balance for transfer.");
-        }
-        this.withdraw(amount);
-        target.deposit(amount);
-        logger.info("Transferred $" + amount + " from account " + holderName + " to " + target.getHolderName() + ".");
-    }
-
-    /**
-     * Sets the account holder's name.
-     *
-     * @param newName the new name for the account holder
-     * @throws IllegalArgumentException if the new name is null or empty
-     */
-    public void setHolderName(String newName) {
-        // Validate that the new holder name is not null or empty
-        if (newName == null || newName.trim().isEmpty()) {
-            logger.warning("Attempted to set invalid holder name: " + newName);
-            throw new IllegalArgumentException("Holder name cannot be null or empty.");
-        }
-        logger.info("Changed account holder name from " + this.holderName + " to " + newName);
-        this.holderName = newName;
-    }
-
-    /**
-     * Checks if the account is overdrawn (i.e., balance is negative).
-     *
-     * @return true if the balance is negative, false otherwise
-     */
-    public boolean isOverdrawn() {
-        return balance < 0;
     }
 }
