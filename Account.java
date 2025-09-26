@@ -73,8 +73,7 @@ public class Account {
      *
      * @param amount the amount to deposit (must be positive)
      * @param password the password for authentication
-     * @throws IllegalArgumentException if the deposit amount is not positive
-     * @throws SecurityException if authentication fails
+     * @throws IllegalArgumentException if the deposit amount is not positive or authentication fails
      */
     public void deposit(double amount, String password) {
         if (!authenticate(password)) {
@@ -140,7 +139,7 @@ public class Account {
             return digest.digest(password.getBytes());
         } catch (NoSuchAlgorithmException e) {
             logger.log(Level.SEVERE, "SHA-256 algorithm not found for password hashing.", e);
-            throw new RuntimeException("SHA-256 algorithm not found.", e);
+            throw new RuntimeException("SHA-256 algorithm not found.");
         }
     }
 }
